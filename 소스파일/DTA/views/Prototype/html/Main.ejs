@@ -1,0 +1,261 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Daily Trend Analyst Main Page</title>
+
+    <!-- d3 -->
+    <script type="text/javascript" src="http://mbostock.github.com/d3/d3.js?2.6.0"></script>
+
+    <link rel="stylesheet" href="/css/main.css" type="text/css">
+
+    <!-- Calendar -->
+    <!--<base href="http://demos.telerik.com/kendo-ui/calendar/events">-->
+    <link rel="stylesheet" href="//kendo.cdn.telerik.com/2015.3.1111/styles/kendo.common-material.min.css" />
+    <link rel="stylesheet" href="//kendo.cdn.telerik.com/2015.3.1111/styles/kendo.material.min.css" />
+
+    <script src="//kendo.cdn.telerik.com/2015.3.1111/js/jquery.min.js"></script>
+    <script src="//kendo.cdn.telerik.com/2015.3.1111/js/kendo.all.min.js"></script>
+
+</head>
+<body>
+<%  var KWD_LENGTH = 10;    //  일별로 보여질 키워드의 갯수
+    var TP_LENGTH = topicInfo.length;   //  총 토픽의 갯수
+
+    //  For Date
+    var yyyymmdd = yyyyddmm;            //  20151124
+    var yyyy = yyyymmdd.substring(0,4); //  2015
+    var mm = yyyymmdd.substring(4,6);   //  11
+    var dd = yyyymmdd.substring(6,8);   //  24
+%>
+<div id="wrap">
+    <div id="header">
+        <div class="logo">
+            <h2>
+                <a href="../main">
+                    <img src="/images/Logo.PNG" alt="Daily Trend Analyst" width="380" height="78">
+                </a>
+            </h2>
+        </div>
+    </div>
+
+    <div id="container">
+        <div class="today_date" style="text-align:right">
+            <font size="5px" color="#2457BD" ><b><%=yyyy%>년 <%=mm%>월 <%=dd%>일</b></font>
+        </div>
+        <div id="column_left">
+            <div id="keyword_rank">
+                <em>키워드 순위</em>
+                <div class="space"></div>
+                <ul>
+                <% for(var i=0; i<KWD_LENGTH; i++){
+                    if( (i+1) < 10 ){ %>
+                        <li><font size="3px" color="#2457BD" > &nbsp;<%=(i+1)%>. &nbsp;&nbsp;<a href="/rank/<%=yyyymmdd%>/<%=topics[i]%>" style="color: #2457BD"><%=topics[i]%> </a></font></li>
+                <%  }else{ %>
+                        <li><font size="3px" color="#2457BD" > <%=(i+1)%>. &nbsp;&nbsp;<a href="/rank/<%=yyyymmdd%>/<%=topics[i]%>" style="color: #2457BD"><%=topics[i]%> </a></font></li>
+                <%  }} %>
+                </ul>
+            </div>
+            <div class="space"></div>
+            <div id="daily_keyword">
+                <em>일별 키워드</em>
+                <div class="space"></div>
+                <div class="demo-section k-content" style="text-align: center;">
+                    <div id="calendar"></div>
+                </div>
+
+                <script>
+                    var today = new Date();
+                    var ftoday = (today.getMonth()+1)+"/"+(today.getDate())+"/"+(today.getFullYear());
+                    var dt = new Date();
+
+                    var month = dt.getMonth()+1;
+                    if(month<10){
+                       month = '0'+month;
+                    }
+                    var day = dt.getDate();
+                    if(day < 10){
+                       day='0'+day;
+                    }
+                    var year = dt.getFullYear();
+                    var yyyyddmm = year+''+month+''+day;
+
+                    function onChange() {
+                        var calendarDate = kendo.toString(this.value(), 'yyyyMMdd');
+
+                        //  오늘을 기준으로 전의 날짜가 아니라면 데이터가 없음을 메세지 창으로 나타냄
+                        if(today.getTime() < kendo.toString(this.value()).getTime()){
+                            alert("No Data");
+                        }else if(calendarDate == yyyyddmm){
+                            alert("No Data");
+                        }else{
+                            parent.location.href="http://54.65.222.144/rank/"+calendarDate;
+                        }
+                    }
+
+                    $("#calendar").kendoCalendar({
+                        change: onChange
+                    });
+                    </script>
+
+            </div>
+        </div>
+
+        <div id="column_right">
+            <em>관계망</em>
+            <div class="space"></div>
+            <div class="d3">
+                <!-- d3 graph -->
+            </div>
+        </div>
+
+        <div class="space"></div>
+
+        <div id="column_bottom">
+            <em>뉴스기사</em>
+        </div>
+        <div class="column_bn" style="overflow:scroll; width:920px; height:300px; padding:10px; background-color:#EBF7FF;">
+
+                <% for(var i=0; i<TP_LENGTH; i++){ %>
+                    <a href="<%= topicInfo[i].NEWS_URL %>" target="_blank" ><font size="3px" color="black" ><b><%= topicInfo[i].NEWS_TITLE %></b></font></a> &nbsp;&nbsp;&nbsp; <%= topicInfo[i].NEWS_CO %> &nbsp;&nbsp;&nbsp;<%= topicInfo[i].NEWS_YYYYDDMM%>
+
+                    <br/>
+                <% } %>
+
+        </div>
+    </div>
+
+    <div id="footer">
+
+    </div>
+</div>
+
+<script type="text/javascript" charset="utf-8">
+            var associateLink = "<%=link%>".split(",");
+            var topicArray = "<%=topics%>".split(",");
+            var date = "<%=yyyyddmm%>";
+            var w = 600, h = 500;
+            var rankSize = topicArray.length;
+            var labelDistance = 0;
+            var vis = d3.select(".d3").append("svg:svg").attr("width", w).attr("height", h);
+
+            var nodes = [];
+            var labelAnchors = [];
+            var labelAnchorLinks = [];
+            var links = [];
+
+            for(var i = 0; i < rankSize; i++) {
+                var node = {
+                    label : topicArray[i],
+                    url : date+"/"+topicArray[i],
+                    size : rankSize-i+2
+                };
+
+                nodes.push(node);
+                labelAnchors.push({
+                    node : node,
+                });
+                labelAnchors.push({
+                    node : node
+                });
+            };
+            if( associateLink.length == 1 ) {
+                associateLink.pop();
+            }
+            for( var i = 0; i < associateLink.length; i++){
+                var datas = associateLink[i].split("-");
+                links.push({
+                    source : Number(datas[0]),
+                    target : Number(datas[1]),
+                    weight : Math.random()
+                })
+            }
+             for(var i = 0; i < nodes.length; i++) {
+                //링크 연결 랜덤 부분
+                labelAnchorLinks.push({
+                    source : i * 2,
+                    target : i * 2 + 1,
+                    weight : 1
+                });
+            };
+
+         var force = d3.layout.force().size([w, h]).nodes(nodes).links(links).gravity(1).linkDistance(100).charge(-3000).linkStrength(function(x) {
+            return x.weight * 10
+         });
+
+         force.start();
+
+         var force2 = d3.layout.force().nodes(labelAnchors).links(labelAnchorLinks).gravity(0).linkDistance(0).linkStrength(8).charge(-100).size([w, h]);
+         force2.start();
+
+         var link = vis.selectAll("line.link").data(links).enter().append("svg:line").attr("class", "link").style("stroke", "#5587ED");
+
+         var node = vis.selectAll("g.node").data(force.nodes()).enter().append("svg:g").attr("class", "node");
+         node.append("svg:circle").attr("r", function(d) {
+            return d.size;
+         }).style("fill", "#555").style("stroke", "#FFF").style("stroke-width", 10).on('click', function(d) {
+              window.location.href = d.url;
+            });
+         node.call(force.drag);
+
+
+         var anchorLink = vis.selectAll("line.anchorLink").data(labelAnchorLinks)//.enter().append("svg:line").attr("class", "anchorLink").style("stroke", "#999");
+
+         var anchorNode = vis.selectAll("g.anchorNode").data(force2.nodes()).enter().append("svg:g").attr("class", "anchorNode");
+         anchorNode.append("svg:circle").attr("r", 0).style("fill", "#FFF");
+            anchorNode.append("svg:text").text(function(d, i) {
+            return i % 2 == 0 ? "" : d.node.label
+         }).style("fill", "#000").style("font-family", "Malgun Gothic").style("font-size", 15);
+
+            var updateLink = function() {
+                this.attr("x1", function(d) {
+                    return d.source.x;
+                }).attr("y1", function(d) {
+                    return d.source.y;
+                }).attr("x2", function(d) {
+                    return d.target.x;
+                }).attr("y2", function(d) {
+                    return d.target.y;
+                });
+
+            }
+
+            var updateNode = function() {
+                this.attr("transform", function(d) {
+                    return "translate(" + d.x + "," + d.y + ")";
+                });
+            }
+
+            force.on("tick", function() {
+                force2.start();
+                node.call(updateNode);
+                anchorNode.each(function(d, i) {
+                    if(i % 2 == 0) {
+                        d.x = d.node.x;
+                        d.y = d.node.y;
+                    } else {
+                        var b = this.childNodes[1].getBBox();
+
+                        var diffX = d.x - d.node.x;
+                        var diffY = d.y - d.node.y;
+
+                        var dist = Math.sqrt(diffX * diffX + diffY * diffY);
+
+                        var shiftX = b.width * (diffX - dist) / (dist * 2);
+                        shiftX = Math.max(-b.width, Math.min(0, shiftX));
+                        var shiftY = 5;
+                        if (isNaN(shiftX)) {
+                            shiftX = 5;
+                        }
+                        this.childNodes[1].setAttribute("transform", "translate(" + shiftX + "," + shiftY + ")");
+                    }
+                });
+
+                anchorNode.call(updateNode);
+
+                link.call(updateLink);
+                anchorLink.call(updateLink);
+            });
+      </script>
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Daily Trend Analyst Main Page</title>
+
+    <!-- d3 -->
+    <script type="text/javascript" src="http://mbostock.github.com/d3/d3.js?2.6.0"></script>
+
+    <link rel="stylesheet" href="/css/main.css" type="text/css">
+
+    <!-- Calendar -->
+    <!--<base href="http://demos.telerik.com/kendo-ui/calendar/events">-->
+    <link rel="stylesheet" href="//kendo.cdn.telerik.com/2015.3.1111/styles/kendo.common-material.min.css" />
+    <link rel="stylesheet" href="//kendo.cdn.telerik.com/2015.3.1111/styles/kendo.material.min.css" />
+
+    <script src="//kendo.cdn.telerik.com/2015.3.1111/js/jquery.min.js"></script>
+    <script src="//kendo.cdn.telerik.com/2015.3.1111/js/kendo.all.min.js"></script>
+
+
+</head>
+<body>
+<% var KWD_LENGTH = 10; %>
+
+<div id="wrap">
+    <div id="header">
+        <div class="logo">
+            <h2>
+                <img src="../img/Logo.PNG" alt="Daily Trend Analyst" width="380" height="78">
+            </h2>
+        </div>
+    </div>
+
+    <div class="space"></div>
+
+    <div id="container">
+        <div class="today_date">
+            <%=yyyyddmm%>
+        </div>
+        <div id="column_left">
+            <div id="keyword_rank">
+                <em>키워드 순위</em>
+                <div class="space"></div>
+                <ul>
+                <% for(var i=0; i<KWD_LENGTH; i++){
+                    if( (i+1) < 10 ){ %>
+                        <li> &nbsp;<%=(i+1)%>. <%=topics[i]%> </li>
+                <%  }else{ %>
+                        <li> <%=(i+1)%>. <%=topics[i]%> </li>
+                <%  }} %>
+                </ul>
+            </div>
+            <div class="space"></div>
+            <div id="daily_keyword">
+                <em>일별 키워드</em>
+                <div class="space"></div>
+                <div class="demo-section k-content" style="text-align: center;">
+                    <div id="calendar"></div>
+                </div>
+
+                <script>
+                    function onChange() {
+                        kendoConsole.log("Change :: " + kendo.toString(this.value(), 'd'));
+                    }
+
+                    function onNavigate() {
+                        kendoConsole.log("Navigate");
+                    }
+
+                    $("#calendar").kendoCalendar({
+                        change: onChange,
+                        navigate: onNavigate
+                    });
+                    </script>
+
+            </div>
+        </div>
+
+        <div id="column_right">
+            <em>관계망</em>
+            <div class="space"></div>
+            <div class="d3">
+                <!-- d3 graph -->
+            </div>
+        </div>
+
+        <div id="column_bottom">
+            <em>뉴스기사</em>
+        </div>
+        <div class="column_bn">
+            <%  var obj = JSON.parse(topicInfo) %>
+            <%=obj[0].NEWS_NO%>
+        </div>
+    </div>
+
+    <div id="footer">
+
+    </div>
+</div>
+
+<script type="text/javascript" charset="utf-8">
+         var w = 600, h = 400;
+
+         var labelDistance = 0;
+
+         var vis = d3.select(".d3").append("svg:svg").attr("width", w).attr("height", h);
+
+         var nodes = [];
+         var labelAnchors = [];
+         var labelAnchorLinks = [];
+         var links = [];
+
+         for(var i = 0; i < 30; i++) {
+            var node = {
+               label : "node " + i
+            };
+            nodes.push(node);
+            labelAnchors.push({
+               node : node
+            });
+            labelAnchors.push({
+               node : node
+            });
+         };
+
+         for(var i = 0; i < nodes.length; i++) {
+            for(var j = 0; j < i; j++) {
+               if(Math.random() > .95)
+                  links.push({
+                     source : i,
+                     target : j,
+                     weight : Math.random()
+                  });
+            }
+            labelAnchorLinks.push({
+               source : i * 2,
+               target : i * 2 + 1,
+               weight : 1
+            });
+         };
+
+         var force = d3.layout.force().size([w, h]).nodes(nodes).links(links).gravity(1).linkDistance(50).charge(-3000).linkStrength(function(x) {
+            return x.weight * 10
+         });
+
+
+         force.start();
+
+         var force2 = d3.layout.force().nodes(labelAnchors).links(labelAnchorLinks).gravity(0).linkDistance(0).linkStrength(8).charge(-100).size([w, h]);
+         force2.start();
+
+         var link = vis.selectAll("line.link").data(links).enter().append("svg:line").attr("class", "link").style("stroke", "#CCC");
+
+         var node = vis.selectAll("g.node").data(force.nodes()).enter().append("svg:g").attr("class", "node");
+         node.append("svg:circle").attr("r", 5).style("fill", "#555").style("stroke", "#FFF").style("stroke-width", 3);
+         node.call(force.drag);
+
+
+         var anchorLink = vis.selectAll("line.anchorLink").data(labelAnchorLinks)//.enter().append("svg:line").attr("class", "anchorLink").style("stroke", "#999");
+
+         var anchorNode = vis.selectAll("g.anchorNode").data(force2.nodes()).enter().append("svg:g").attr("class", "anchorNode");
+         anchorNode.append("svg:circle").attr("r", 0).style("fill", "#FFF");
+            anchorNode.append("svg:text").text(function(d, i) {
+            return i % 2 == 0 ? "" : d.node.label
+         }).style("fill", "#555").style("font-family", "Arial").style("font-size", 12);
+
+         var updateLink = function() {
+            this.attr("x1", function(d) {
+               return d.source.x;
+            }).attr("y1", function(d) {
+               return d.source.y;
+            }).attr("x2", function(d) {
+               return d.target.x;
+            }).attr("y2", function(d) {
+               return d.target.y;
+            });
+
+         }
+
+         var updateNode = function() {
+            this.attr("transform", function(d) {
+               return "translate(" + d.x + "," + d.y + ")";
+            });
+
+         }
+
+
+         force.on("tick", function() {
+
+            force2.start();
+
+            node.call(updateNode);
+
+            anchorNode.each(function(d, i) {
+               if(i % 2 == 0) {
+                  d.x = d.node.x;
+                  d.y = d.node.y;
+               } else {
+                  var b = this.childNodes[1].getBBox();
+
+                  var diffX = d.x - d.node.x;
+                  var diffY = d.y - d.node.y;
+
+                  var dist = Math.sqrt(diffX * diffX + diffY * diffY);
+
+                  var shiftX = b.width * (diffX - dist) / (dist * 2);
+                  shiftX = Math.max(-b.width, Math.min(0, shiftX));
+                  var shiftY = 5;
+                  this.childNodes[1].setAttribute("transform", "translate(" + shiftX + "," + shiftY + ")");
+               }
+            });
+
+
+            anchorNode.call(updateNode);
+
+            link.call(updateLink);
+            anchorLink.call(updateLink);
+
+         });
+
+      </script>
+</body>
+</html>
